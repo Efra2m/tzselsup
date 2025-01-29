@@ -9,13 +9,8 @@ interface Param {
   options?: string[];
 }
 
-interface ParamValue {
-  paramId: number;
-  value: string;
-}
-
 interface Model {
-  paramValues: ParamValue[];
+  paramValues: { [paramId: number]: string };
 }
 
 interface ParamEditorProps {
@@ -24,67 +19,51 @@ interface ParamEditorProps {
 }
 
 const ParamEditor: FC<ParamEditorProps> = ({ params, model }) => {
-  const [value, setValue] = useState<{ [key: number]: string }>(() =>
-    params.reduce<{ [key: number]: string }>((acc, param) => {
-      const foundValue = model.paramValues.find(
-        (pv) => pv.paramId === param.id
-      );
-      acc[param.id] = foundValue ? foundValue.value : "";
-      return acc;
-    }, {})
+  const [paramValues, setParamValues] = useState<{ [key: number]: string }>(
+    () => model.paramValues
   );
-
-  const handleChange = (paramId: number, value: string) => {
-    setValue((prevValues) => ({
-      ...prevValues,
-      [paramId]: value,
-    }));
-  };
 
   const handleInputChange = (
     paramId: number,
     e: ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
-    handleChange(paramId, e.target.value);
+    setParamValues({
+      ...paramValues,
+      [paramId]: e.target.value,
+    });
   };
 
   const renderInput = (param: Param) => {
+    const { id, type, options } = param;
     const inputProps = {
-      value: value[param.id] || "",
+      value: paramValues[id] || "",
       onChange: (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-        handleInputChange(param.id, e),
+        handleInputChange(id, e),
     };
 
-    switch (param.type) {
-      case "string":
-        return <input type="text" {...inputProps} />;
-      case "number":
-        return <input type="number" {...inputProps} />;
-      case "select":
-        return (
-          <select {...inputProps}>
-            {param.options?.map((option, index) => (
-              <option key={index} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-        );
-      default:
-        return null;
+    if (type === "select" && options) {
+      return (
+        <select {...inputProps}>
+          {options.map((option, index) => (
+            <option key={index} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      );
     }
+
+    return <input type={type ?? "text"} {...inputProps} />;
   };
 
   return (
     <form>
-      <div>
-        {params.map((param) => (
-          <div key={param.id} style={{ marginBottom: "10px" }}>
-            <label>{param.name}:</label>
-            {renderInput(param)}
-          </div>
-        ))}
-      </div>
+      {params.map((param) => (
+        <div key={param.id} style={{ marginBottom: "10px" }}>
+          <label>{param.name}:</label>
+          {renderInput(param)}
+        </div>
+      ))}
     </form>
   );
 };
@@ -96,10 +75,10 @@ const App: FC = () => {
   ];
 
   const model: Model = {
-    paramValues: [
-      { paramId: 1, value: "повседневное" },
-      { paramId: 2, value: "макси" },
-    ],
+    paramValues: {
+      1: "повседневное",
+      2: "макси",
+    },
   };
 
   return <ParamEditor model={model} params={params} />;
